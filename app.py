@@ -7,6 +7,9 @@ import os
 app = Flask(__name__, static_folder="public")
 CORS(app)
 
+#hi
+
+
 # Load models from the "model" folder
 model_path = "model"
 model_fever = joblib.load(os.path.join(model_path, "model_fever.pkl"))
