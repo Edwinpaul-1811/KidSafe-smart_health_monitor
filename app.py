@@ -12,6 +12,7 @@ model_path = "model"
 model_fever = joblib.load(os.path.join(model_path, "model_fever.pkl"))
 model_dehydration = joblib.load(os.path.join(model_path, "model_dehydration.pkl"))
 model_stress = joblib.load(os.path.join(model_path, "model_stress.pkl"))
+model_flu = joblib.load(os.path.join(model_path, "model_flu.pkl"))
 model_overall = joblib.load(os.path.join(model_path, "model_overall.pkl"))
 
 # Load label encoders from the "model" folder
