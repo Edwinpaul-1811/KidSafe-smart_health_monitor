@@ -1,19 +1,20 @@
 import joblib
 import os
 
-def load_models(model_path="model"):
-    models = {
-        "fever": joblib.load(os.path.join(model_path, "model_fever.pkl")),
-        "dehydration": joblib.load(os.path.join(model_path, "model_dehydration.pkl")),
-        "stress": joblib.load(os.path.join(model_path, "model_stress.pkl")),
-        "overall": joblib.load(os.path.join(model_path, "model_overall.pkl")),
-        "flu": joblib.load(os.path.join(model_path, "model_flu.pkl"))
-    }
-    return models
+# Define the model and encoder paths
+MODEL_PATH = "model"
 
-def load_encoders(model_path="model"):
-    encoders = {
-        "health": joblib.load(os.path.join(model_path, "le_health.pkl")),
-        "activity": joblib.load(os.path.join(model_path, "le_activity.pkl"))
-    }
-    return encoders
+# Function to load models
+def load_model(model_name):
+    return joblib.load(os.path.join(MODEL_PATH, f"{model_name}.pkl"))
+
+# Load models
+model_fever = load_model("model_fever")
+model_dehydration = load_model("model_dehydration")
+model_stress = load_model("model_stress")
+model_flu = load_model("model_flu")
+model_overall = load_model("model_overall")
+
+# Load encoders
+le_health = load_model("le_health")
+le_activity = load_model("le_activity")

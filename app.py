@@ -1,42 +1,43 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
 from flask_cors import CORS
-import joblib
 import pandas as pd
 import os
+import db  # Your db.py module
+import model  # Your model.py module
 
 app = Flask(__name__, static_folder="public")
+app.secret_key = "your_secret_key_here"  # Needed for session support
 CORS(app)
 
-# Load models
-model_path = "model"
-model_fever = joblib.load(os.path.join(model_path, "model_fever.pkl"))
-model_dehydration = joblib.load(os.path.join(model_path, "model_dehydration.pkl"))
-model_stress = joblib.load(os.path.join(model_path, "model_stress.pkl"))
-model_flu = joblib.load(os.path.join(model_path, "model_flu.pkl"))
-model_overall = joblib.load(os.path.join(model_path, "model_overall.pkl"))
-
-# Load encoders
-le_health = joblib.load(os.path.join(model_path, "le_health.pkl"))
-le_activity = joblib.load(os.path.join(model_path, "le_activity.pkl"))
+# Initialize MySQL connection
+db.init_app(app)
 
 @app.route("/")
+def home():
+    if "username" in session:
+        return redirect(url_for("index"))
+    else:
+        return redirect(url_for("login"))
+
+@app.route("/index")
 def index():
-    return send_from_directory(app.static_folder, "index.html")
+    if "username" in session:
+        return send_from_directory(app.static_folder, "index.html")
+    else:
+        return redirect(url_for("login"))
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
-
-        # Basic required features
         body_temp = float(data["BodyTemp"])
         heart_rate = int(data["HeartRate"])
         spo2 = float(data["SpO2"])
         activity = data["ActivityLevel"]
         sleep_hours = float(data["SleepHours"])
-        activity_encoded = le_activity.transform([activity])[0]
+        activity_encoded = model.le_activity.transform([activity])[0]
 
-        # NEW FIELDS: received as string/numeric
+        # Extra features
         mood = data.get("Mood")
         concentration = data.get("Concentration")
         social_interaction = data.get("SocialInteraction")
@@ -52,37 +53,15 @@ def predict():
         screen_time = float(data.get("ScreenTime", 0))
         fatigue = data.get("Fatigue")
 
-        # Log for now (you can save this to DB or CSV later)
-        print("Extra inputs received:")
-        print({
-            "Mood": mood,
-            "Concentration": concentration,
-            "SocialInteraction": social_interaction,
-            "MealsSkipped": meals_skipped,
-            "WaterIntake": water_intake,
-            "Appetite": appetite,
-            "Snacking": snacking,
-            "NightAwakenings": night_awakenings,
-            "TroubleSleep": trouble_sleep,
-            "HandHygiene": hand_hygiene,
-            "MaskUse": mask_use,
-            "OutdoorPlay": outdoor_play,
-            "ScreenTime": screen_time,
-            "Fatigue": fatigue
-        })
-
-        # Feature set for current model
-        feature_columns = ["BodyTemp", "HeartRate", "SpO2", "ActivityLevel", "SleepHours"]
         features = pd.DataFrame([[body_temp, heart_rate, spo2, activity_encoded, sleep_hours]],
-                                columns=feature_columns)
+                                columns=["BodyTemp", "HeartRate", "SpO2", "ActivityLevel", "SleepHours"])
 
-        # Predictions
-        pred_fever = model_fever.predict(features)[0]
-        pred_dehydration = model_dehydration.predict(features)[0]
-        pred_stress = model_stress.predict(features)[0]
-        pred_flu = model_flu.predict(features)[0]
-        pred_overall = model_overall.predict(features)[0]
-        overall_label = le_health.inverse_transform([pred_overall])[0]
+        pred_fever = model.model_fever.predict(features)[0]
+        pred_dehydration = model.model_dehydration.predict(features)[0]
+        pred_stress = model.model_stress.predict(features)[0]
+        pred_flu = model.model_flu.predict(features)[0]
+        pred_overall = model.model_overall.predict(features)[0]
+        overall_label = model.le_health.inverse_transform([pred_overall])[0]
 
         return jsonify({
             "Fever": "Yes" if pred_fever == 1 else "No",
@@ -94,6 +73,48 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)})
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "GET":
+        return send_from_directory(app.static_folder, "register.html")
+    
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            username = data["username"]
+            password = data["password"]
+
+            if db.create_user(username, password):
+                return jsonify({"message": "User registered successfully!"}), 201
+            else:
+                return jsonify({"message": "Username already exists!"}), 400
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return send_from_directory(app.static_folder, "login.html")
+    
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            username = data["username"]
+            password = data["password"]
+
+            if db.verify_user(username, password):
+                session["username"] = username
+                return jsonify({"message": "Login successful!"})
+            else:
+                return jsonify({"message": "Invalid username or password!"}), 401
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     app.run(debug=True)
