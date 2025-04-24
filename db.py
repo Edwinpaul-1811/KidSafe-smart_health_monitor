@@ -53,3 +53,29 @@ def close_connection():
     if connection and connection.is_connected():
         connection.close()
         print("MySQL connection closed.")
+
+'''
+CREATE DATABASE smart_health;
+
+USE smart_health;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL
+);
+
+'''
+
+
+'''
+-- Log in to MySQL as root or an admin user
+CREATE USER 'mlcat'@'localhost' IDENTIFIED BY 'password';
+
+-- Grant all privileges on your database (e.g. smart_health)
+GRANT ALL PRIVILEGES ON smart_health.* TO 'mlcat'@'localhost';
+
+-- Apply the changes
+FLUSH PRIVILEGES;
+
+'''
