@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - Smart Health Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef6fb;
+      padding: 40px;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    form {
+      max-width: 300px;
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    a {
+      display: block;
+      margin-top: 15px;
+      color: #0077cc;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Login</h2>
+  <form method="POST" action="/login">
+    <label>Username:</label>
+    <input type="text" name="username" required />
+    
+    <label>Password:</label>
+    <input type="password" name="password" required />
+
+    <button type="submit">Login</button>
+  </form>
+  <a href="/register">Don't have an account? Register</a>
+</body>
+</html>

@@ -1,25 +1,15 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for
 from flask_cors import CORS
-import joblib
 import pandas as pd
-import os
+from model import load_models, load_encoders
+from db import create_user, verify_user
 
 app = Flask(__name__, static_folder="public")
 CORS(app)
 
-# Path to models
-model_path = "model"
-
-# Load models
-model_fever = joblib.load(os.path.join(model_path, "model_fever.pkl"))
-model_dehydration = joblib.load(os.path.join(model_path, "model_dehydration.pkl"))
-model_stress = joblib.load(os.path.join(model_path, "model_stress.pkl"))
-model_overall = joblib.load(os.path.join(model_path, "model_overall.pkl"))
-model_flu = joblib.load(os.path.join(model_path, "model_flu.pkl"))  # ✅ New
-
-# Load encoders
-le_health = joblib.load(os.path.join(model_path, "le_health.pkl"))
-le_activity = joblib.load(os.path.join(model_path, "le_activity.pkl"))
+# Load models and encoders
+models = load_models()
+encoders = load_encoders()
 
 @app.route("/")
 def index():
@@ -29,40 +19,44 @@ def index():
 def predict():
     try:
         data = request.get_json()
+        features = pd.DataFrame([[
+            float(data["BodyTemp"]),
+            int(data["HeartRate"]),
+            float(data["SpO2"]),
+            encoders["activity"].transform([data["ActivityLevel"]])[0],
+            float(data["SleepHours"])
+        ]], columns=["BodyTemp", "HeartRate", "SpO2", "ActivityLevel", "SleepHours"])
 
-        # Extract inputs
-        body_temp = float(data["BodyTemp"])
-        heart_rate = int(data["HeartRate"])
-        spo2 = float(data["SpO2"])
-        activity = data["ActivityLevel"]
-        sleep_hours = float(data["SleepHours"])
-
-        # Encode activity level
-        activity_encoded = le_activity.transform([activity])[0]
-
-        # Create feature DataFrame
-        feature_columns = ["BodyTemp", "HeartRate", "SpO2", "ActivityLevel", "SleepHours"]
-        features = pd.DataFrame([[body_temp, heart_rate, spo2, activity_encoded, sleep_hours]],
-                                columns=feature_columns)
-
-        # Predict health risks
-        pred_fever = model_fever.predict(features)[0]
-        pred_dehydration = model_dehydration.predict(features)[0]
-        pred_stress = model_stress.predict(features)[0]
-        pred_flu = model_flu.predict(features)[0]  # ✅ New
-        pred_overall = model_overall.predict(features)[0]
-        overall_label = le_health.inverse_transform([pred_overall])[0]
-
-        return jsonify({
-            "Fever": "Yes" if pred_fever == 1 else "No",
-            "Dehydration": "Yes" if pred_dehydration == 1 else "No",
-            "Stress": "Yes" if pred_stress == 1 else "No",
-            "Flu": "Yes" if pred_flu == 1 else "No",  # ✅ New
-            "OverallHealth": overall_label
-        })
-
+        result = {
+            "Fever": "Yes" if models["fever"].predict(features)[0] == 1 else "No",
+            "Dehydration": "Yes" if models["dehydration"].predict(features)[0] == 1 else "No",
+            "Stress": "Yes" if models["stress"].predict(features)[0] == 1 else "No",
+            "Flu": "Yes" if models["flu"].predict(features)[0] == 1 else "No",
+            "OverallHealth": encoders["health"].inverse_transform([models["overall"].predict(features)[0]])[0]
+        }
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)})
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        if create_user(username, password):
+            return redirect(url_for("login"))
+        return "User already exists or error occurred."
+    return send_from_directory(app.static_folder, "register.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        if verify_user(username, password):
+            return redirect(url_for("index"))
+        return "Invalid credentials"
+    return send_from_directory(app.static_folder, "login.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
