@@ -84,12 +84,13 @@
         resultDiv.innerText = "Error: " + result.error;
       } else {
         resultDiv.innerHTML = `
-          ✅ Fever: ${result.Fever}<br>
-          💧 Dehydration: ${result.Dehydration}<br>
-          😟 Stress: ${result.Stress}<br>
-          💥 Flu: ${result.Flu}<br>
-          ❤️ Overall Health: <strong>${result.OverallHealth}</strong>
-        `;
+  ✅ Fever: ${result.Fever}<br>
+  💧 Dehydration: ${result.Dehydration}<br>
+  😟 Stress: ${result.Stress}<br>
+  🤧 Flu: ${result.Flu}<br>  <!-- ✅ New Line -->
+  ❤️ Overall Health: <strong>${result.OverallHealth}</strong>
+`;
+
       }
     });
   </script>
