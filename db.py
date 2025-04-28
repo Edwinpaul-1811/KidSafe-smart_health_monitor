@@ -64,7 +64,7 @@ CREATE TABLE users (
     username VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL
 );
-
+ALTER TABLE users MODIFY password VARCHAR(512);
 '''
 
 
