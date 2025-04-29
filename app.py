@@ -1,120 +1,109 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
-from flask_cors import CORS
+from flask import Flask, request, jsonify, render_template, redirect, session
 import pandas as pd
-import os
-import db  # Your db.py module
-import model  # Your model.py module
+from model import model_fever, model_dehydration, model_stress, model_flu, model_overall, le_health, le_activity
+import numpy as np
+from db import init_app, create_user, verify_user, close_connection  # Import your database functions
 
-app = Flask(__name__, static_folder="public")
-app.secret_key = "your_secret_key_here"  # Needed for session support
-CORS(app)
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
 
-# Initialize MySQL connection
-db.init_app(app)
+# Initialize the database connection
+init_app(app)
 
-@app.route("/")
+# Optional: Load dataset if you want to use or display it somewhere
+df = pd.read_csv("full_kids_health_dataset.csv")
+
+# Home route
+@app.route('/')
 def home():
-    if "username" in session:
-        return redirect(url_for("index"))
-    else:
-        return redirect(url_for("login"))
+    if 'user' not in session:
+        return redirect('/login')  # Redirect to login if not logged in
+    return render_template('index.html')  # Show the main form if logged in
 
-@app.route("/index")
-def index():
-    if "username" in session:
-        return send_from_directory(app.static_folder, "index.html")
-    else:
-        return redirect(url_for("login"))
+# Login route
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.get_json()  # Get the JSON data from the request
 
-@app.route("/predict", methods=["POST"])
+        username = data.get('username')
+        password = data.get('password')
+
+        if verify_user(username, password):
+            session['user'] = username  # Store user in session
+            return jsonify({"message": "Login successful!"}), 200  # Return success message
+        else:
+            return jsonify({"message": "Invalid credentials, please try again"}), 401  # 401 Unauthorized
+
+    return render_template('login.html')  # Display login page for GET request
+
+# Register route
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return jsonify({"message": "Username and password are required."}), 400
+
+        if create_user(username, password):
+            return jsonify({"message": "User registered successfully!"}), 201
+        else:
+            return jsonify({"message": "Registration failed. Username may already exist."}), 409 # 409 Conflict
+
+    return render_template('register.html')
+
+# Logout route
+@app.route('/logout')
+def logout():
+    session.pop('user', None)  # Remove the user from session
+    return redirect('/login')  # Redirect to login page after logging out
+
+# Prediction route
+@app.route('/predict', methods=['POST'])
 def predict():
     try:
         data = request.get_json()
-        body_temp = float(data["BodyTemp"])
-        heart_rate = int(data["HeartRate"])
-        spo2 = float(data["SpO2"])
-        activity = data["ActivityLevel"]
-        sleep_hours = float(data["SleepHours"])
-        activity_encoded = model.le_activity.transform([activity])[0]
 
-        # Extra features
-        mood = data.get("Mood")
-        concentration = data.get("Concentration")
-        social_interaction = data.get("SocialInteraction")
-        meals_skipped = int(data.get("MealsSkipped", 0))
-        water_intake = int(data.get("WaterIntake", 0))
-        appetite = data.get("Appetite")
-        snacking = data.get("Snacking")
-        night_awakenings = int(data.get("NightAwakenings", 0))
-        trouble_sleep = data.get("TroubleSleep")
-        hand_hygiene = data.get("HandHygiene")
-        mask_use = data.get("MaskUse")
-        outdoor_play = float(data.get("OutdoorPlay", 0))
-        screen_time = float(data.get("ScreenTime", 0))
-        fatigue = data.get("Fatigue")
+        # Try this combination of 5 features
+        features = [
+            float(data['BodyTemp']),
+            int(data['HeartRate']),
+            float(data['SpO2']),
+            float(data['SleepHours']),
+            int(data['WaterIntake'])
+        ]
 
-        features = pd.DataFrame([[body_temp, heart_rate, spo2, activity_encoded, sleep_hours]],
-                                columns=["BodyTemp", "HeartRate", "SpO2", "ActivityLevel", "SleepHours"])
+        # Reshape input for model
+        input_data = np.array(features).reshape(1, -1)
 
-        pred_fever = model.model_fever.predict(features)[0]
-        pred_dehydration = model.model_dehydration.predict(features)[0]
-        pred_stress = model.model_stress.predict(features)[0]
-        pred_flu = model.model_flu.predict(features)[0]
-        pred_overall = model.model_overall.predict(features)[0]
-        overall_label = model.le_health.inverse_transform([pred_overall])[0]
+        # Predictions
+        pred_fever = "Yes" if model_fever.predict(input_data)[0] == 1 else "No"
+        pred_dehydration = "Yes" if model_dehydration.predict(input_data)[0] == 1 else "No"
+        pred_stress = "Yes" if model_stress.predict(input_data)[0] == 1 else "No"
+        pred_flu = "Yes" if model_flu.predict(input_data)[0] == 1 else "No"
+        pred_overall = model_overall.predict(input_data)[0]
+        pred_overall_label = le_health.inverse_transform([pred_overall])[0]
 
+        # Return prediction results as a JSON response
         return jsonify({
-            "Fever": "Yes" if pred_fever == 1 else "No",
-            "Dehydration": "Yes" if pred_dehydration == 1 else "No",
-            "Stress": "Yes" if pred_stress == 1 else "No",
-            "Flu": "Yes" if pred_flu == 1 else "No",
-            "OverallHealth": overall_label
+            "Fever": pred_fever,
+            "Dehydration": pred_dehydration,
+            "Stress": pred_stress,
+            "Flu": pred_flu,
+            "OverallHealth": pred_overall_label
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "GET":
-        return send_from_directory(app.static_folder, "register.html")
-    
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            username = data["username"]
-            password = data["password"]
-
-            if db.create_user(username, password):
-                return jsonify({"message": "User registered successfully!"}), 201
-            else:
-                return jsonify({"message": "Username already exists!"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "GET":
-        return send_from_directory(app.static_folder, "login.html")
-    
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            username = data["username"]
-            password = data["password"]
-
-            if db.verify_user(username, password):
-                session["username"] = username
-                return jsonify({"message": "Login successful!"})
-            else:
-                return jsonify({"message": "Invalid username or password!"}), 401
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-@app.route("/logout")
-def logout():
-    session.pop("username", None)
-    return redirect(url_for("login"))
-
-if __name__ == "__main__":
+# Run the Flask app
+if __name__ == '__main__':
     app.run(debug=True)
+
+# Consider adding this to close the database connection when the app shuts down
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    close_connection()
