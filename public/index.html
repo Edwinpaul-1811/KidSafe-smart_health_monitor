@@ -1,136 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Smart Health Monitor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     body {
+      margin: 0;
+      padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 40px;
       background: linear-gradient(to right, #c2e9fb, #a1c4fd);
-      color: #333;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding-top: 40px;/
     }
 
-    .logout {
-      text-align: right;
-      margin-bottom: 20px;
-    }
-
-    .logout button {
-      padding: 8px 16px;
-      background: crimson;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    .logout button:hover {
-      background: darkred;
+    .container {
+      margin-top: 60px;
+      width: 95%;
+      max-width: 1200px;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     }
 
     h2 {
       text-align: center;
       font-size: 28px;
-      color: #2e3c63;
-      margin-bottom: 30px;
+      margin-bottom: 40px;
       background: linear-gradient(90deg, #ffd700, #ff6347);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
       background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     form {
-      background: white;
-      max-width: 700px;
-      margin: auto;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px 40px;
     }
 
     label {
+      font-weight: bold;
+      margin-bottom: 6px;
       display: block;
-      margin-top: 15px;
-      font-weight: 600;
+      color: #333;
     }
 
-    input, select {
+    input,
+    select {
       width: 100%;
       padding: 10px;
-      margin-top: 5px;
-      border-radius: 8px;
       border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
     }
 
-    button[type="submit"], #downloadBtn {
-      width: 100%;
-      padding: 12px;
-      margin-top: 25px;
-      background: linear-gradient(to right, #6a11cb, #2575fc);
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-
-    button[type="submit"]:hover, #downloadBtn:hover {
-      background: linear-gradient(to right, #2575fc, #6a11cb);
-    }
-
-    #result {
-      margin-top: 30px;
-      background: #ffffffcc;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-      font-size: 17px;
-      line-height: 1.6;
-    }
-
-    .section {
+    .buttons {
+      grid-column: span 3;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
       margin-top: 20px;
     }
 
-    .section-title {
+    .buttons button {
+      padding: 12px 24px;
+      font-size: 16px;
       font-weight: bold;
-      color: #2c3e50;
-      margin-bottom: 5px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .predict {
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+    }
+
+    .predict:hover {
+      background: linear-gradient(to right, #2575fc, #6a11cb);
+    }
+
+    .download {
+      background: crimson;
+      color: white;
+    }
+
+    .download:hover {
+      background: darkred;
+    }
+
+    #result {
+      grid-column: span 3;
+      background: #f5f5f5;
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    @media screen and (max-width: 1024px) {
+      form {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .buttons,
+      #result {
+        grid-column: span 2;
+      }
+    }
+
+    @media screen and (max-width: 600px) {
+      form {
+        grid-template-columns: 1fr;
+      }
+
+      .buttons,
+      #result {
+        grid-column: span 1;
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
+
 <body>
-  <div class="logout">
-    <button onclick="window.location.href='/logout'">Logout</button>
+
+  <div class="container">
+    <h2>Smart Health Monitoring System for Kids using Machine Learning</h2>
+    <form id="healthForm">
+      <div>
+        <label>Child's Name:</label>
+        <input type="text" name="Name" required />
+      </div>
+
+      <div>
+        <label>Age:</label>
+        <input type="number" name="Age" min="1" required />
+      </div>
+
+      <div>
+        <label>Gender:</label>
+        <select name="Gender">
+          <option>Male</option>
+          <option>Female</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Body Temperature (°F):</label>
+        <input type="number" step="0.1" name="BodyTemp" required />
+      </div>
+
+      <div>
+        <label>Heart Rate (bpm):</label>
+        <input type="number" name="HeartRate" required />
+      </div>
+
+      <div>
+        <label>SpO₂ (%):</label>
+        <input type="number" step="0.1" name="SpO2" required />
+      </div>
+
+      <div>
+        <label>Activity Level:</label>
+        <select name="ActivityLevel">
+          <option>Low</option>
+          <option>Normal</option>
+          <option>High</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Sleep Hours:</label>
+        <input type="number" step="0.1" name="SleepHours" required />
+      </div>
+
+      <div>
+        <label>Mood:</label>
+        <select name="Mood">
+          <option>Happy</option>
+          <option>Neutral</option>
+          <option>Sad</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Concentration Issues:</label>
+        <select name="Concentration">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Social Interaction:</label>
+        <select name="SocialInteraction">
+          <option>Active</option>
+          <option>Shy</option>
+          <option>Avoidant</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Meals Skipped (per day):</label>
+        <input type="number" name="MealsSkipped" min="0" />
+      </div>
+
+      <div>
+        <label>Water Intake (glasses):</label>
+        <input type="number" name="WaterIntake" min="0" />
+      </div>
+
+      <div>
+        <label>Appetite:</label>
+        <select name="Appetite">
+          <option>Good</option>
+          <option>Normal</option>
+          <option>Poor</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Snacking:</label>
+        <select name="Snacking">
+          <option>Frequent</option>
+          <option>Occasional</option>
+          <option>Rare</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Night Awakenings (times):</label>
+        <input type="number" name="NightAwakenings" min="0" />
+      </div>
+
+      <div>
+        <label>Trouble Falling Asleep:</label>
+        <select name="TroubleSleep">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Hand Hygiene:</label>
+        <select name="HandHygiene">
+          <option>Regular</option>
+          <option>Sometimes</option>
+          <option>Rarely</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Mask Use:</label>
+        <select name="MaskUse">
+          <option>Always</option>
+          <option>Sometimes</option>
+          <option>Never</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Outdoor Play (hours/day):</label>
+        <input type="number" step="0.1" name="OutdoorPlay" min="0" />
+      </div>
+
+      <div>
+        <label>Screen Time (hours/day):</label>
+        <input type="number" step="0.1" name="ScreenTime" min="0" />
+      </div>
+
+      <div>
+        <label>Fatigue After Play:</label>
+        <select name="Fatigue">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+
+      <div class="buttons">
+        <button type="submit" class="predict">Predict Health</button>
+        <button type="button" class="download">Download</button>
+      </div>
+
+      <div id="result"></div>
+    </form>
   </div>
-
-  <h2>Smart Health Monitoring System for Kids</h2>
-
-  <form id="healthForm">
-    <!-- Input fields (same as before) -->
-    <!-- For brevity, keep your full input fields here as is -->
-    <!-- You can paste them back from previous version -->
-  </form>
-
-  <div id="result"></div>
-  <button id="downloadBtn" style="display:none;">Download Result as PDF</button>
 
   <script>
     const form = document.getElementById("healthForm");
     const resultDiv = document.getElementById("result");
-    const downloadBtn = document.getElementById("downloadBtn");
+    let latestResult = null;
+    let latestInput = null;
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
 
       const formData = new FormData(form);
       const data = Object.fromEntries(formData.entries());
+      latestInput = { ...data };
 
       const response = await fetch("/predict", {
         method: "POST",
@@ -139,86 +319,75 @@
       });
 
       const result = await response.json();
+      latestResult = result;
 
       if (result.error) {
         resultDiv.innerText = "Error: " + result.error;
-        downloadBtn.style.display = "none";
+      } else {
+        resultDiv.innerHTML = `
+        ✅ Fever: ${result.Fever}<br>
+        💧 Dehydration: ${result.Dehydration}<br>
+        😟 Stress: ${result.Stress}<br>
+        🤧 Flu: ${result.Flu}<br>
+        ❤️ Overall Health: <strong>${result.OverallHealth}</strong>
+      `;
+      }
+    });
+
+    document.querySelector(".download").addEventListener("click", () => {
+      if (!latestResult || !latestInput) {
+        alert("Please submit the form first to get predictions.");
         return;
       }
 
-      // Health summary
-      let html = `
-        ✅ <strong>Fever:</strong> ${result.Fever}<br>
-        💧 <strong>Dehydration:</strong> ${result.Dehydration}<br>
-        😟 <strong>Stress:</strong> ${result.Stress}<br>
-        🤧 <strong>Flu:</strong> ${result.Flu}<br>
-        ❤️ <strong>Overall Health:</strong> ${result.OverallHealth}<br>
-      `;
-
-      // Recommendations
-      let foods = [];
-      let cause = [];
-      let recovery = [];
-
-      if (result.Fever === "Yes") {
-        foods.push("Cool fluids, light soups, fruits like watermelon");
-        cause.push("Possible infection or heat");
-        recovery.push("2–4 days with rest and hydration");
-      }
-
-      if (result.Dehydration === "Yes") {
-        foods.push("Oral rehydration solutions, coconut water, juicy fruits");
-        cause.push("Insufficient water intake, excessive sweating");
-        recovery.push("1–2 days with good hydration");
-      }
-
-      if (result.Stress === "Yes") {
-        foods.push("Bananas, oats, dairy, dark chocolate");
-        cause.push("Lack of sleep, academic pressure, screen time");
-        recovery.push("3–7 days with relaxation & routine");
-      }
-
-      if (result.Flu === "Yes") {
-        foods.push("Warm fluids, honey-lemon water, vitamin C rich foods");
-        cause.push("Viral infection");
-        recovery.push("5–7 days with medicine & rest");
-      }
-
-      if (foods.length > 0) {
-        html += `
-          <div class="section">
-            <div class="section-title">🥗 Recommended Foods:</div>
-            <div>${foods.join("; ")}</div>
-          </div>
-          <div class="section">
-            <div class="section-title">🔍 Possible Causes:</div>
-            <div>${cause.join("; ")}</div>
-          </div>
-          <div class="section">
-            <div class="section-title">🕒 Recovery Estimate:</div>
-            <div>${recovery.join("; ")}</div>
-          </div>
-        `;
-      }
-
-      resultDiv.innerHTML = html;
-      downloadBtn.style.display = "block";
-    });
-
-    downloadBtn.addEventListener("click", async () => {
-      const resultElement = document.getElementById("result");
-      const canvas = await html2canvas(resultElement, { scale: 2 });
-      const imgData = canvas.toDataURL("image/png");
-
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Smart Health Monitoring Report", 14, 20);
 
-      pdf.addImage(imgData, "PNG", 10, 10, pdfWidth - 20, pdfHeight);
-      pdf.save("Health_Prediction_Report.pdf");
+      const inputTable = Object.entries(latestInput).map(([key, val]) => [key, val]);
+      const resultTable = Object.entries(latestResult).filter(([k]) => k !== "Recommendations").map(([k, v]) => [k, v]);
+
+      doc.autoTable({
+        startY: 30,
+        head: [["Input Field", "Value"]],
+        body: inputTable,
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [["Prediction", "Result"]],
+        body: resultTable,
+      });
+
+      // Add Recommendations if available
+      if (latestResult.Recommendations) {
+        const rec = latestResult.Recommendations;
+        const recRows = [];
+
+        Object.entries(rec).forEach(([k, v]) => {
+          if (typeof v === "object") {
+            recRows.push([k, ""]);
+            Object.entries(v).forEach(([subKey, val]) => {
+              const content = Array.isArray(val) ? val.join(", ") : val;
+              recRows.push([`   ${subKey}`, content]);
+            });
+          } else {
+            recRows.push([k, v]);
+          }
+        });
+
+        doc.autoTable({
+          startY: doc.lastAutoTable.finalY + 10,
+          head: [["Recommendation Type", "Details"]],
+          body: recRows,
+        });
+      }
+
+      doc.save("Health_Report.pdf");
     });
   </script>
+
 </body>
+
 </html>

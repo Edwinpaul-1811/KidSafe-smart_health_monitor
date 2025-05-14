@@ -1,30 +1,59 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pandas as pd
-import os
-import db  # Your db.py module
-import model  # Your model.py module
+import model  # Your existing model.py
 
 app = Flask(__name__, static_folder="public")
-app.secret_key = "your_secret_key_here"  # Needed for session support
 CORS(app)
-
-# Initialize MySQL connection
-db.init_app(app)
 
 @app.route("/")
 def home():
-    if "username" in session:
-        return redirect(url_for("index"))
-    else:
-        return redirect(url_for("login"))
+    return send_from_directory(app.static_folder, "index.html")
 
-@app.route("/index")
-def index():
-    if "username" in session:
-        return send_from_directory(app.static_folder, "index.html")
-    else:
-        return redirect(url_for("login"))
+def get_health_recommendations(fever, dehydration, stress, flu, overall_health):
+    result = {
+        "Fever": "Yes" if fever == 1 else "No",
+        "Dehydration": "Yes" if dehydration == 1 else "No",
+        "Stress": "Yes" if stress == 1 else "No",
+        "Flu": "Yes" if flu == 1 else "No",
+        "OverallHealth": overall_health,
+        "Recommendations": {}
+    }
+
+    if fever == 1:
+        result["Recommendations"]["Fever"] = {
+            "Food": ["Lukewarm soup", "Plenty of fluids", "Fresh fruits"],
+            "TimeToCure": "3–5 days with proper rest and hydration.",
+            "Cause": "Most commonly caused by viral infections such as cold or flu."
+        }
+
+    if dehydration == 1:
+        result["Recommendations"]["Dehydration"] = {
+            "Food": ["Electrolyte drinks", "Coconut water", "Watery fruits (e.g., watermelon, cucumber)"],
+            "TimeToCure": "1–2 days with adequate fluid intake.",
+            "Cause": "Insufficient water intake or excessive sweating."
+        }
+
+    if stress == 1:
+        result["Recommendations"]["Stress"] = {
+            "Food": ["Warm milk", "Bananas", "Dark chocolate", "Nuts"],
+            "TimeToCure": "Varies depending on cause and support given.",
+            "Cause": "Could be due to school pressure, lack of sleep, or poor diet."
+        }
+
+    if flu == 1:
+        result["Recommendations"]["Flu"] = {
+            "Food": ["Broth", "Herbal tea", "Ginger", "Garlic"],
+            "TimeToCure": "Usually 5–7 days with adequate care.",
+            "Cause": "Viral infection, often seasonal."
+        }
+
+    if overall_health == "Unhealthy":
+        result["Recommendations"]["Overall"] = {
+            "Advice": "Ensure regular meals, hydration, enough sleep, and physical activity."
+        }
+
+    return result
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -37,7 +66,7 @@ def predict():
         sleep_hours = float(data["SleepHours"])
         activity_encoded = model.le_activity.transform([activity])[0]
 
-        # Extra features
+        # Additional inputs (optional features)
         mood = data.get("Mood")
         concentration = data.get("Concentration")
         social_interaction = data.get("SocialInteraction")
@@ -63,58 +92,18 @@ def predict():
         pred_overall = model.model_overall.predict(features)[0]
         overall_label = model.le_health.inverse_transform([pred_overall])[0]
 
-        return jsonify({
-            "Fever": "Yes" if pred_fever == 1 else "No",
-            "Dehydration": "Yes" if pred_dehydration == 1 else "No",
-            "Stress": "Yes" if pred_stress == 1 else "No",
-            "Flu": "Yes" if pred_flu == 1 else "No",
-            "OverallHealth": overall_label
-        })
+        response = get_health_recommendations(
+            fever=pred_fever,
+            dehydration=pred_dehydration,
+            stress=pred_stress,
+            flu=pred_flu,
+            overall_health=overall_label
+        )
+
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": str(e)})
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "GET":
-        return send_from_directory(app.static_folder, "register.html")
-    
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            username = data["username"]
-            password = data["password"]
-
-            if db.create_user(username, password):
-                return jsonify({"message": "User registered successfully!"}), 201
-            else:
-                return jsonify({"message": "Username already exists!"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "GET":
-        return send_from_directory(app.static_folder, "login.html")
-    
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            username = data["username"]
-            password = data["password"]
-
-            if db.verify_user(username, password):
-                session["username"] = username
-                return jsonify({"message": "Login successful!"})
-            else:
-                return jsonify({"message": "Invalid username or password!"}), 401
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-@app.route("/logout")
-def logout():
-    session.pop("username", None)
-    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     app.run(debug=True)
