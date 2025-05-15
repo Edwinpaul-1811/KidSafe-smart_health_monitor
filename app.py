@@ -23,14 +23,14 @@ def get_health_recommendations(fever, dehydration, stress, flu, overall_health):
     if fever == 1:
         result["Recommendations"]["Fever"] = {
             "Food": ["Lukewarm soup", "Plenty of fluids", "Fresh fruits"],
-            "TimeToCure": "3–5 days with proper rest and hydration.",
+            "TimeToCure": "3-5 days with proper rest and hydration.",
             "Cause": "Most commonly caused by viral infections such as cold or flu."
         }
 
     if dehydration == 1:
         result["Recommendations"]["Dehydration"] = {
             "Food": ["Electrolyte drinks", "Coconut water", "Watery fruits (e.g., watermelon, cucumber)"],
-            "TimeToCure": "1–2 days with adequate fluid intake.",
+            "TimeToCure": "1-2 days with adequate fluid intake.",
             "Cause": "Insufficient water intake or excessive sweating."
         }
 
@@ -44,7 +44,7 @@ def get_health_recommendations(fever, dehydration, stress, flu, overall_health):
     if flu == 1:
         result["Recommendations"]["Flu"] = {
             "Food": ["Broth", "Herbal tea", "Ginger", "Garlic"],
-            "TimeToCure": "Usually 5–7 days with adequate care.",
+            "TimeToCure": "Usually 5-7 days with adequate care.",
             "Cause": "Viral infection, often seasonal."
         }
 
